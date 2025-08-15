@@ -21,24 +21,29 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft = details.max_participants - details.participants.length;
 
         // Participants list HTML
-        let participantsHTML = "";
-        if (details.participants.length > 0) {
-          participantsHTML = `
-            <div class="participants-section">
-              <strong>Participants:</strong>
-              <ul class="participants-list">
-                ${details.participants.map(email => `<li>${email}</li>`).join("")}
-              </ul>
-            </div>
-          `;
-        } else {
-          participantsHTML = `
-            <div class="participants-section">
-              <strong>Participants:</strong>
-              <p class="participants-none">No participants yet.</p>
-            </div>
-          `;
-        }
+          let participantsHTML = "";
+          if (details.participants.length > 0) {
+            participantsHTML = `
+              <div class="participants-section">
+                <strong>Participants:</strong>
+                <div class="participants-list">
+                  ${details.participants.map(email => `
+                    <span class="participant-item">
+                      <span class="participant-email">${email}</span>
+                      <span class="delete-icon" title="Remove" data-activity="${name}" data-email="${email}">&#128465;</span>
+                    </span>
+                  `).join("")}
+                </div>
+              </div>
+            `;
+          } else {
+            participantsHTML = `
+              <div class="participants-section">
+                <strong>Participants:</strong>
+                <p class="participants-none">No participants yet.</p>
+              </div>
+            `;
+          }
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
@@ -49,6 +54,31 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         activitiesList.appendChild(activityCard);
+
+          // Add event listeners for delete icons after card is added
+          setTimeout(() => {
+            activityCard.querySelectorAll('.delete-icon').forEach(icon => {
+              icon.addEventListener('click', async (e) => {
+                const activity = icon.getAttribute('data-activity');
+                const email = icon.getAttribute('data-email');
+                if (confirm(`Unregister ${email} from ${activity}?`)) {
+                  try {
+                    const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
+                      method: 'POST',
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                      fetchActivities();
+                    } else {
+                      alert(result.detail || 'Failed to unregister.');
+                    }
+                  } catch (err) {
+                    alert('Error unregistering participant.');
+                  }
+                }
+              });
+            });
+          }, 0);
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -83,6 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Refresh activities list
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
